@@ -1,0 +1,24 @@
+<ossec_config>
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>10.0.10.1:514</location>
+  </localfile>
+  <localfile>
+    <log_format>syslog</log_format>
+    <location>10.0.10.254:514</location>
+  </localfile>
+</ossec_config>
+
+<decoder name="mikrotik-firewall">
+  <prematch>^<</prematch>
+  <regex>^<(\d+)>(\S+) (\S+) (\S+) [a-z]+,(\S+) (\S+)</regex>
+  <order>facility, timestamp, hostname, process, action, detail</order>
+</decoder>
+
+<group name="mikrotik">
+  <rule id="120001" level="10">
+    <decoded_as>mikrotik-firewall</decoded_as>
+    <match>action:drop</match>
+    <description>MikroTik firewall dropped packet</description>
+  </rule>
+</group>

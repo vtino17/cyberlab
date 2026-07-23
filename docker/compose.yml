@@ -1,0 +1,82 @@
+services:
+  wazuh-manager:
+    image: wazuh/wazuh-manager:4.7
+    hostname: wazuh-manager
+    ports:
+      - "1514:1514/udp"
+      - "1515:1515"
+      - "55000:55000"
+    volumes:
+      - wazuh_data:/var/ossec/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "/var/ossec/bin/wazuh-control", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  wazuh-indexer:
+    image: wazuh/wazuh-indexer:4.7
+    hostname: wazuh-indexer
+    ports:
+      - "9200:9200"
+    volumes:
+      - indexer_data:/var/lib/elasticsearch
+    environment:
+      - cluster.name=wazuh
+      - discovery.type=single-node
+    restart: unless-stopped
+
+  wazuh-dashboard:
+    image: wazuh/wazuh-dashboard:4.7
+    hostname: wazuh-dashboard
+    ports:
+      - "443:5601"
+    environment:
+      - OPENSEARCH_HOSTS=https://wazuh-indexer:9200
+      - WAZUH_MANAGER_IP=wazuh-manager
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=90d
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=cyberlab
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    restart: unless-stopped
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+    restart: unless-stopped
+    profiles:
+      - full
+
+volumes:
+  wazuh_data:
+  indexer_data:
+  prometheus_data:
+  grafana_data:
